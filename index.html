@@ -503,40 +503,139 @@ function commitForm() {
 }
 
 function viewAjustes() {
-  const w = el('div', { style: 'padding:16px 16px 28px;display:flex;flex-direction:column;gap:16px' });
-  w.appendChild(el('h2', { style: 'font-size:20px;font-weight:400' }, 'Datos y copias'));
-  w.appendChild(el('p', { class: 'muted', style: 'margin:0;font-size:12.5px;line-height:1.6;text-align:justify' },
-    'El catálogo se guarda en este dispositivo. El Excel del repositorio (<code>bibliotecaBP17.xlsx</code>, junto a <code>index.html</code>) es la fuente inicial: si lo actualizas en GitHub puedes traerlo aquí sustituyendo todo o fusionando solo los libros nuevos.'));
-  const mk = (label, variant, fn, note) => {
-    const box = el('div', { style: 'display:flex;flex-direction:column;gap:4px' });
-    const b = el('button', { class: 'btn ' + variant + ' btn-block' }, label);
-    b.onclick = fn; box.appendChild(b);
-    if (note) box.appendChild(el('div', { class: 'muted', style: 'font-size:10.5px' }, note));
-    w.appendChild(box);
+  const w = el('div', { style: 'padding:16px 16px 30px;display:flex;flex-direction:column;gap:22px' });
+  const sec = (titulo, texto) => {
+    const s = el('div', { style: 'display:flex;flex-direction:column;gap:9px' });
+    s.appendChild(el('div', { class: 'charthead' }, '<h3 style="font-size:15px;font-weight:400">' + titulo + '</h3>'));
+    if (texto) s.appendChild(el('p', { class: 'muted', style: 'margin:0;font-size:12px;line-height:1.62;text-align:justify;hyphens:auto' }, texto));
+    w.appendChild(s); return s;
   };
-  mk('Traer del repositorio (sustituir todo)', 'btn-primary', async () => {
-    if (!confirm('Se descartarán los cambios locales y se cargará el Excel del repositorio. ¿Continuar?')) return;
-    await importRepo('replace');
-  }, 'Descarta ediciones locales.');
-  mk('Traer del repositorio (fusionar novedades)', 'btn-secondary', () => importRepo('merge'),
-    'Conserva tus ediciones y añade los libros que no estén ya en el catálogo.');
-  mk('Cargar un Excel desde el dispositivo', 'btn-secondary', () => $('#filepick').click(),
-    'Útil si el archivo aún no está en GitHub.');
-  mk('Descargar copia de seguridad (.json)', 'btn-secondary', () => download(
+  const mk = (box, label, variant, fn, note) => {
+    const g = el('div', { style: 'display:flex;flex-direction:column;gap:4px' });
+    const b = el('button', { class: 'btn ' + variant + ' btn-block' }, label);
+    b.onclick = fn; g.appendChild(b);
+    if (note) g.appendChild(el('div', { class: 'muted', style: 'font-size:10.5px;line-height:1.5' }, note));
+    box.appendChild(g);
+  };
+
+  w.appendChild(el('h2', { style: 'font-size:20px;font-weight:400' }, 'Datos y copias'));
+  w.appendChild(el('p', { class: 'muted', style: 'margin:0;font-size:12.5px;line-height:1.62;text-align:justify;hyphens:auto' },
+    'Cuando añades o editas un libro, el cambio se guarda <strong>solo en este dispositivo</strong>. La app no puede escribir por sí misma en GitHub, así que para que el Excel del repositorio quede igual hace falta un paso más: <em>Descargar Excel actualizado</em> y subir ese archivo al repositorio.'));
+
+  const s1 = sec('1 · Subir mis cambios a GitHub',
+    'Este es el camino para que lo que añadas en el móvil llegue al repositorio: descarga el archivo y súbelo a GitHub sustituyendo el que hay (<em>Add file → Upload files</em>, mismo nombre <code>bibliotecaBP17.xlsx</code>, <em>Commit changes</em>). Desde el móvil funciona igual en el navegador.');
+  mk(s1, 'Descargar Excel actualizado (.xlsx)', 'btn-primary', exportXlsx,
+    'Recomendado. Genera bibliotecaBP17.xlsx con todo el catálogo actual (' + S.books.length + ' libros) y las 14 columnas originales. Es el archivo que debes subir al repositorio.');
+  mk(s1, 'Descargar copia de seguridad (.json)', 'btn-secondary', () => download(
     'bibliobp17-' + new Date().toISOString().slice(0, 10) + '.json',
-    JSON.stringify({ books: S.books }, null, 1), 'application/json'), 'Para subirla al repositorio o restaurarla.');
-  mk('Exportar a CSV (abre en Excel)', 'btn-secondary', exportCsv, 'Separado por punto y coma, con BOM.');
-  mk('Restaurar copia .json', 'btn-secondary', () => $('#jsonpick').click());
-  mk('Vaciar los datos de este dispositivo', 'btn-secondary', () => {
+    JSON.stringify({ books: S.books }, null, 1), 'application/json'),
+    'Respaldo fiel para guardar aparte; se restaura desde esta misma pantalla.');
+  mk(s1, 'Exportar a CSV', 'btn-secondary', exportCsv,
+    'Solo si quieres abrirlo en otra hoja de cálculo. No sirve como archivo del repositorio.');
+
+  const s2 = sec('2 · Traer los datos del repositorio',
+    'Útil cuando el Excel de GitHub es más reciente que este dispositivo: porque lo editaste en el ordenador, o porque acabas de instalar la app en otro móvil.');
+  mk(s2, 'Sustituir todo por el del repositorio', 'btn-secondary', async () => {
+    if (!confirm('Se descartará el catálogo de este dispositivo y se cargará el Excel del repositorio. ¿Continuar?')) return;
+    await importRepo('replace');
+  }, 'Borra las ediciones locales que no hayas subido. Úsalo cuando el repositorio sea la versión buena.');
+  mk(s2, 'Fusionar solo las novedades', 'btn-secondary', () => importRepo('merge'),
+    'Conserva tus ediciones y añade únicamente los libros del Excel que no estén ya aquí (compara título + autor).');
+  mk(s2, 'Cargar un Excel desde el dispositivo', 'btn-secondary', () => $('#filepick').click(),
+    'Lee un .xlsx guardado en el móvil, sin pasar por GitHub. Pregunta si sustituir o fusionar.');
+  mk(s2, 'Restaurar una copia .json', 'btn-secondary', () => $('#jsonpick').click(),
+    'Sustituye el catálogo por el de un respaldo descargado antes.');
+
+  const s3 = sec('3 · Borrar', null);
+  mk(s3, 'Vaciar los datos de este dispositivo', 'btn-secondary', () => {
     if (!confirm('¿Borrar el catálogo guardado en este dispositivo?')) return;
     localStorage.removeItem(KEY); S.books = []; S.source = 'vacío'; refresh(); paintHead(); toast('Datos borrados');
-  });
+  }, 'Al volver a abrir la app se leerá otra vez el Excel del repositorio. Descarga antes una copia si tienes cambios sin subir.');
+
   w.appendChild(el('div', { class: 'muted', style: 'font-size:10.5px;line-height:1.6;border-top:1px solid var(--color-divider);padding-top:10px' },
-    'Origen actual: ' + esc(S.source) + '<br>Service worker: <span id="swstate2">—</span>'));
+    'Libros en este dispositivo: ' + S.books.length + '<br>Origen actual: ' + esc(S.source) +
+    '<br>Service worker: <span id="swstate2">—</span>'));
   return w;
 }
+
+/* ——— escritura de .xlsx: zip sin comprimir + hoja con cadenas en línea ——— */
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+  return t;
+})();
+function crc32(u8) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function zipStore(entries) {
+  const enc = new TextEncoder(), parts = [], central = [];
+  let offset = 0;
+  const now = new Date();
+  const time = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)) & 0xFFFF;
+  const date = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xFFFF;
+  entries.forEach(([name, text]) => {
+    const nameB = enc.encode(name), data = enc.encode(text), crc = crc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+    lh.setUint16(8, 0, true); lh.setUint16(10, time, true); lh.setUint16(12, date, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true);
+    lh.setUint16(26, nameB.length, true); lh.setUint16(28, 0, true);
+    parts.push(new Uint8Array(lh.buffer), nameB, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true);
+    ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true); ch.setUint16(12, time, true); ch.setUint16(14, date, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true);
+    ch.setUint16(28, nameB.length, true); ch.setUint32(42, offset, true);
+    central.push(new Uint8Array(ch.buffer), nameB);
+    offset += 30 + nameB.length + data.length;
+  });
+  const cdSize = central.reduce((n, p) => n + p.length, 0);
+  const eo = new DataView(new ArrayBuffer(22));
+  eo.setUint32(0, 0x06054b50, true);
+  eo.setUint16(8, entries.length, true); eo.setUint16(10, entries.length, true);
+  eo.setUint32(12, cdSize, true); eo.setUint32(16, offset, true);
+  return new Blob(parts.concat(central, [new Uint8Array(eo.buffer)]),
+    { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+function colName(i) { let s = ''; i++; while (i > 0) { const r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = (i - r - 1) / 26; } return s; }
+function xmlEsc(s) {
+  return String(s == null ? '' : s).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '')
+    .replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
+}
+function exportXlsx() {
+  if (!S.books.length) { toast('El catálogo está vacío.'); return; }
+  const rows = [FIELDS.map(f => f[1])].concat(S.books.map(b => FIELDS.map(f => String(b[f[0]] == null ? '' : b[f[0]]))));
+  const sheetRows = rows.map((r, ri) => '<row r="' + (ri + 1) + '">' + r.map((v, ci) =>
+    v === '' ? '' : '<c r="' + colName(ci) + (ri + 1) + '" t="inlineStr"><is><t xml:space="preserve">' + xmlEsc(v) + '</t></is></c>').join('') + '</row>').join('');
+  const files = [
+    ['[Content_Types].xml',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+      '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>'],
+    ['_rels/.rels',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+    ['xl/workbook.xml',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' +
+      '<sheet name="Biblioteca" sheetId="1" r:id="rId1"/></sheets></workbook>'],
+    ['xl/_rels/workbook.xml.rels',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>'],
+    ['xl/worksheets/sheet1.xml',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<sheetData>' + sheetRows + '</sheetData></worksheet>']
+  ];
+  download('bibliotecaBP17.xlsx', zipStore(files));
+  toast('Excel generado con ' + S.books.length + ' libros. Súbelo al repositorio sustituyendo el archivo actual.', 6000);
+}
 function download(name, text, type) {
-  const url = URL.createObjectURL(new Blob([text], { type: type || 'text/plain;charset=utf-8' }));
+  const blob = (text instanceof Blob) ? text : new Blob([text], { type: type || 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
   const a = el('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }

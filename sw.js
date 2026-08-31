@@ -6,7 +6,7 @@
                                                   en el repo se recoja al instante)
    Al cambiar el HTML sube también el número de CACHE para forzar la actualización. */
 
-const CACHE = 'bibliobp17-v2';
+const CACHE = 'bibliobp17-v3';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 
 self.addEventListener('install', e => {
